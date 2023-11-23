@@ -28,7 +28,9 @@
                 <!-- Left column -->
                 <div class="col-md-8">
                     <!-- Error message -->
-                    <?php if (isset($error_msg)){echo $error_msg;} ?>
+                    <?php if (isset($error_msg)) {
+                        echo $error_msg;
+                    } ?>
 
                     <h1><?= $page_title ?></h1>
                     <h5><?= $page_subtitle ?></h5>
@@ -37,17 +39,17 @@
                         <tbody>
                         <tr>
                             <th scope="row">Creators</th>
-                            <td><?= $creators ?></td>
+                            <td><?= $creator ?></td>
                         </tr>
                         <tr>
                             <th scope="row">Number of seasons</th>
-                            <td><?= $nbr_seasons ?></td>
+                            <td><?= $seasons ?></td>
                         </tr>
                         </tbody>
                     </table>
                     <div class="row">
                         <div class="col-sm-2">
-                            <a href="/DDWT23/week1/edit/" role="button" class="btn btn-warning">Edit</a>
+                        <a href="/DDWT23/week1/edit/?series_id=<?= $series_id ?>" class="btn btn-primary">Edit</a>
                         </div>
                         <div class="col-sm-2">
                             <form action="/DDWT23/week1/remove/" method="POST">

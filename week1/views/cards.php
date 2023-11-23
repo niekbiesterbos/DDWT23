@@ -4,9 +4,8 @@
         Series
     </div>
     <div class="card-body">
-        <p class="count">Series overview already has</p>
-        <h2>3</h2>
-        <p>series listed</p>
+    <h5 class="card-title">Series count</h5>
+    <p class="card-text">There are <?php echo $series_count; ?> series listed.</p>
         <a href="/DDWT23/week1/add/" class="btn btn-primary">List yours</a>
     </div>
 </div>
