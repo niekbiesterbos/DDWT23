@@ -25,14 +25,13 @@ error_reporting(E_ALL);
  * @param string $password Password for the database
  * @return PDO
  */
-function connect_db($host, $database, $username, $password)
-{
+function connect_db($host, $database, $username, $password) {
     try {
         $conn = new PDO("mysql:host=$host;dbname=$database", $username, $password);
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         return $conn;
     } catch (PDOException $e) {
-        echo "Connection failed: " . $e->getMessage();
+        echo "Connection failed: ".$e->getMessage();
         return null;
     }
 }
@@ -42,8 +41,7 @@ function connect_db($host, $database, $username, $password)
  * @param PDO $db Database connection
  * @return int
  */
-function count_series($db)
-{
+function count_series($db) {
     $stmt = $db->prepare("SELECT COUNT(*) FROM series");
     $stmt->execute();
     return $stmt->fetchColumn();
@@ -54,13 +52,12 @@ function count_series($db)
  * @param PDO $db Database connection
  * @return array
  */
-function get_series($db)
-{
+function get_series($db) {
     $stmt = $db->prepare("SELECT * FROM series");
     $stmt->execute();
     $series = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($series as $key => $value) {
-        foreach ($value as $subkey => $subvalue) {
+    foreach($series as $key => $value) {
+        foreach($value as $subkey => $subvalue) {
             $series[$key][$subkey] = htmlspecialchars($subvalue);
         }
     }
@@ -73,13 +70,12 @@ function get_series($db)
  * @param array $series Associative array with all the series
  * @return string
  */
-function get_series_table($series)
-{
+function get_series_table($series) {
     $table = '';
-    foreach ($series as $serie) {
+    foreach($series as $serie) {
         $table .= '<tr>';
-        $table .= '<td>' . $serie['name'] . '</td>';
-        $table .= '<td><a href="/DDWT23/week1/series/?series_id=' . $serie['id'] . '">More info</a></td>';
+        $table .= '<td>'.$serie['name'].'</td>';
+        $table .= '<td><a href="/DDWT23/week1/series/?series_id='.$serie['id'].'">More info</a></td>';
         $table .= '</tr>';
     }
     return $table;
@@ -91,12 +87,17 @@ function get_series_table($series)
  * @param int $series_id ID of the series
  * @return array
  */
-function get_series_info($db, $series_id)
-{
+function get_series_info($db, $series_id) {
     $stmt = $db->prepare("SELECT * FROM series WHERE id = :id");
     $stmt->bindParam(':id', $series_id);
     $stmt->execute();
     $series = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if(!$series) {
+        return [
+            'type' => 'danger',
+            'message' => 'There was an error. The series does not exist.', 'status' => 400];
+    }
     return $series;
 }
 
@@ -106,21 +107,20 @@ function get_series_info($db, $series_id)
  * @param array $post_data POST data from the form
  * @return array
  */
-function add_series($db, $post_data)
-{
-    if (empty($post_data['name']) || empty($post_data['creator']) || empty($post_data['seasons']) || empty($post_data['abstract'])) {
-        return ['type' => 'danger', 'message' => 'All fields are required.'];
+function add_series($db, $post_data) {
+    if(empty($post_data['name']) || empty($post_data['creator']) || empty($post_data['seasons']) || empty($post_data['abstract'])) {
+        return ['type' => 'danger', 'message' => 'All fields are required.', 'status' => 400];
     }
 
-    if (!is_numeric($post_data['seasons'])) {
-        return ['type' => 'danger', 'message' => 'Seasons must be a number.'];
+    if(!is_numeric($post_data['seasons'])) {
+        return ['type' => 'danger', 'message' => 'Seasons must be a number.', 'status' => 400];
     }
 
     $stmt = $db->prepare("SELECT * FROM series WHERE name = :name");
     $stmt->bindParam(':name', $post_data['name']);
     $stmt->execute();
-    if ($stmt->rowCount() > 0) {
-        return ['type' => 'danger', 'message' => 'The series already exists in the database.'];
+    if($stmt->rowCount() > 0) {
+        return ['type' => 'danger', 'message' => 'The series already exists in the database.', 'status' => 400];
     }
 
     $stmt = $db->prepare("INSERT INTO series (name, creator, seasons, abstract) VALUES (:name, :creator, :seasons, :abstract)");
@@ -128,10 +128,10 @@ function add_series($db, $post_data)
     $stmt->bindParam(':creator', $post_data['creator']);
     $stmt->bindParam(':seasons', $post_data['seasons']);
     $stmt->bindParam(':abstract', $post_data['abstract']);
-    if ($stmt->execute()) {
+    if($stmt->execute()) {
         return ['type' => 'success', 'message' => 'The series was added successfully.'];
     } else {
-        return ['type' => 'danger', 'message' => 'There was an error adding the series to the database.'];
+        return ['type' => 'danger', 'message' => 'There was an error adding the series to the database.', 'status' => 500];
     }
 }
 
@@ -141,22 +141,35 @@ function add_series($db, $post_data)
  * @param array $post_data POST data from the form
  * @return array
  */
-function update_series($db, $post_data)
-{
-    if (empty($post_data['name']) || empty($post_data['creator']) || empty($post_data['seasons']) || empty($post_data['abstract'])) {
+function update_series($db, $post_data) {
+    if(empty($post_data['name']) || empty($post_data['creator']) || empty($post_data['seasons']) || empty($post_data['abstract'])) {
         return ['type' => 'danger', 'message' => 'All fields are required.'];
     }
 
-    if (!is_numeric($post_data['seasons'])) {
-        return ['type' => 'danger', 'message' => 'Seasons must be a number.'];
+    if(!is_numeric($post_data['seasons'])) {
+        return ['type' => 'danger', 'message' => 'Seasons must be a number.', 'status' => 400];
+    }
+
+    // Check if the series exists
+    $stmt = $db->prepare("SELECT * FROM series WHERE id = :id");
+    $stmt->bindParam(':id', $post_data['series_id']);
+    $stmt->execute();
+    $current_series = $stmt->fetch();
+
+    if(!$current_series) {
+        return [
+            'type' => 'danger',
+            'message' => 'There was an error. The series does not exist.'
+            , 'status' => 404
+        ];
     }
 
     $stmt = $db->prepare("SELECT * FROM series WHERE name = :name AND id != :id");
     $stmt->bindParam(':name', $post_data['name']);
     $stmt->bindParam(':id', $post_data['series_id']);
     $stmt->execute();
-    if ($stmt->rowCount() > 0) {
-        return ['type' => 'danger', 'message' => 'Another series with the same name already exists in the database.'];
+    if($stmt->rowCount() > 0) {
+        return ['type' => 'danger', 'message' => 'Another series with the same name already exists in the database.', 'status' => 500];
     }
 
     $stmt = $db->prepare("UPDATE series SET name = :name, creator = :creator, seasons = :seasons, abstract = :abstract WHERE id = :id");
@@ -165,10 +178,10 @@ function update_series($db, $post_data)
     $stmt->bindParam(':seasons', $post_data['seasons']);
     $stmt->bindParam(':abstract', $post_data['abstract']);
     $stmt->bindParam(':id', $post_data['series_id']);
-    if ($stmt->execute()) {
+    if($stmt->execute()) {
         return ['type' => 'success', 'message' => 'The series was updated successfully.'];
     } else {
-        return ['type' => 'danger', 'message' => 'There was an error updating the series in the database.'];
+        return ['type' => 'danger', 'message' => 'There was an error updating the series in the database.', 'status' => 500];
     }
 }
 
@@ -178,14 +191,26 @@ function update_series($db, $post_data)
  * @param int $series_id ID of the series to remove
  * @return array
  */
-function remove_series($db, $series_id)
-{
+function remove_series($db, $series_id) {
+    $stmt = $db->prepare("SELECT * FROM series WHERE id = :id");
+    $stmt->bindParam(':id', $series_id);
+    $stmt->execute();
+    $series_info = $stmt->fetch();
+
+    if(isset($series_info['message'])) {
+        return [
+            'type' => 'danger',
+            'message' => 'There was an error. The series does not exist.'
+            , 'status' => 404
+        ];
+    }
+
     $stmt = $db->prepare("DELETE FROM series WHERE id = :id");
     $stmt->bindParam(':id', $series_id);
-    if ($stmt->execute()) {
+    if($stmt->execute()) {
         return ['type' => 'success', 'message' => 'The series was removed successfully.'];
     } else {
-        return ['type' => 'danger', 'message' => 'There was an error removing the series from the database.'];
+        return ['type' => 'danger', 'message' => 'There was an error removing the series from the database.', 'status' => 500];
     }
 }
 
@@ -197,11 +222,11 @@ function remove_series($db, $series_id)
  * @return bool
  *
  */
-function new_route($route_uri, $request_type)
-{
+
+function new_route($route_uri, $request_type) {
     $route_uri_expl = array_filter(explode('/', $route_uri));
     $current_path_expl = array_filter(explode('/', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)));
-    if ($route_uri_expl == $current_path_expl && $_SERVER['REQUEST_METHOD'] == strtoupper($request_type)) {
+    if($route_uri_expl == $current_path_expl && $_SERVER['REQUEST_METHOD'] == strtoupper($request_type)) {
         return True;
     } else {
         return False;
@@ -214,8 +239,7 @@ function new_route($route_uri, $request_type)
  * @param bool $active Set the navigation item to active or inactive
  * @return array
  */
-function na($url, $active)
-{
+function na($url, $active) {
     return [$url, $active];
 }
 
@@ -224,8 +248,7 @@ function na($url, $active)
  * @param string $template Filename of the template without extension
  * @return string
  */
-function use_template($template)
-{
+function use_template($template) {
     return sprintf("views/%s.php", $template);
 }
 
@@ -234,15 +257,14 @@ function use_template($template)
  * @param array $breadcrumbs Array with as Key the page name and as Value the corresponding URL
  * @return string HTML code that represents the breadcrumbs
  */
-function get_breadcrumbs($breadcrumbs)
-{
+function get_breadcrumbs($breadcrumbs) {
     $breadcrumbs_exp = '<nav aria-label="breadcrumb">';
     $breadcrumbs_exp .= '<ol class="breadcrumb">';
-    foreach ($breadcrumbs as $name => $info) {
-        if ($info[1]) {
-            $breadcrumbs_exp .= '<li class="breadcrumb-item active" aria-current="page">' . $name . '</li>';
+    foreach($breadcrumbs as $name => $info) {
+        if($info[1]) {
+            $breadcrumbs_exp .= '<li class="breadcrumb-item active" aria-current="page">'.$name.'</li>';
         } else {
-            $breadcrumbs_exp .= '<li class="breadcrumb-item"><a href="' . $info[0] . '">' . $name . '</a></li>';
+            $breadcrumbs_exp .= '<li class="breadcrumb-item"><a href="'.$info[0].'">'.$name.'</a></li>';
         }
     }
     $breadcrumbs_exp .= '</ol>';
@@ -255,8 +277,7 @@ function get_breadcrumbs($breadcrumbs)
  * @param array $navigation Array with as Key the page name and as Value the corresponding URL
  * @return string HTML code that represents the navigation bar
  */
-function get_navigation($navigation)
-{
+function get_navigation($navigation) {
     $navigation_exp = '<nav class="navbar navbar-expand-lg navbar-light bg-light">';
     $navigation_exp .= '<a class="navbar-brand">Series Overview</a>';
     $navigation_exp .= '<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">';
@@ -264,13 +285,13 @@ function get_navigation($navigation)
     $navigation_exp .= '</button>';
     $navigation_exp .= '<div class="collapse navbar-collapse" id="navbarSupportedContent">';
     $navigation_exp .= '<ul class="navbar-nav mr-auto">';
-    foreach ($navigation as $name => $info) {
-        if ($info[1]) {
+    foreach($navigation as $name => $info) {
+        if($info[1]) {
             $navigation_exp .= '<li class="nav-item active">';
         } else {
             $navigation_exp .= '<li class="nav-item">';
         }
-        $navigation_exp .= '<a class="nav-link" href="' . $info[0] . '">' . $name . '</a>';
+        $navigation_exp .= '<a class="nav-link" href="'.$info[0].'">'.$name.'</a>';
 
         $navigation_exp .= '</li>';
     }
@@ -284,8 +305,7 @@ function get_navigation($navigation)
  * Pretty Print Array
  * @param $input
  */
-function p_print($input)
-{
+function p_print($input) {
     echo '<pre>';
     print_r($input);
     echo '</pre>';
@@ -296,10 +316,9 @@ function p_print($input)
  * @param array $feedback Associative array with keys type and message
  * @return string
  */
-function get_error($feedback)
-{
+function get_error($feedback) {
     return '
-        <div class="alert alert-' . $feedback['type'] . '" role="alert">
-            ' . $feedback['message'] . '
+        <div class="alert alert-'.$feedback['type'].'" role="alert">
+            '.$feedback['message'].'
         </div>';
 }

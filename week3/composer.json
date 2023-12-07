@@ -1,0 +1,12 @@
+{
+    "name": "niekbiesterbos/ddwt23",
+    "type": "project",
+    "require": {
+        "bramus/router": "1.6"
+    },
+    "authors": [
+        {
+            "name": "niekbiesterbos"
+        }
+    ]
+}
